@@ -159,14 +159,16 @@
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, runTransaction, setLogLevel, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        let firebaseConfig;
-        try {
-            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        } catch (e) {
-            console.error("Invalid Firebase config", e);
-            document.getElementById('loading-overlay').innerHTML = `<p class="text-red-500">Error: Could not load Firebase configuration.</p>`;
-            firebaseConfig = {}; // Prevent further crashes
-        }
+        const firebaseConfig = {
+  apiKey: "AIzaSyBfxA8x7-h9dVitv0bG72EINYjh5l5jnDY",
+  authDomain: "snake-ladder-5800f.firebaseapp.com",
+  databaseURL: "https://snake-ladder-5800f-default-rtdb.firebaseio.com",
+  projectId: "snake-ladder-5800f",
+  storageBucket: "snake-ladder-5800f.firebasestorage.app",
+  messagingSenderId: "943719213840",
+  appId: "1:943719213840:web:e624c86ab9d30be48a1395",
+  measurementId: "G-CHLPD6VBVP"
+};
         
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
