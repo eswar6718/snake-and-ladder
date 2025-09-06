@@ -155,20 +155,19 @@
     <script type="module">
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, runTransaction, setLogLevel, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- PASTE YOUR FIREBASE CONFIG OBJECT HERE ---
         const firebaseConfig = {
-  apiKey: "AIzaSyBfxA8x7-h9dVitv0bG72EINYjh5l5jnDY",
-  authDomain: "snake-ladder-5800f.firebaseapp.com",
-  databaseURL: "https://snake-ladder-5800f-default-rtdb.firebaseio.com",
-  projectId: "snake-ladder-5800f",
-  storageBucket: "snake-ladder-5800f.firebasestorage.app",
-  messagingSenderId: "943719213840",
-  appId: "1:943719213840:web:e624c86ab9d30be48a1395",
-  measurementId: "G-CHLPD6VBVP"
-};
+            apiKey: "AIzaSyBfxA8x7-h9dVitv0bG72EINYjh5l5jnDY",
+            authDomain: "snake-ladder-5800f.firebaseapp.com",
+            projectId: "snake-ladder-5800f",
+            storageBucket: "snake-ladder-5800f.appspot.com",
+            messagingSenderId: "943719213840",
+            appId: "1:943719213840:web:e624c86ab9d30be48a1395",
+            measurementId: "G-CHLPD6VBVP"
+        };
         
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -219,7 +218,8 @@
 
         // --- Firestore Path Helper ---
         function getGameDocRef(gameCode) {
-            return doc(db, "artifacts", appId, "public", "data", "games", gameCode);
+            // Use a simple path that works anywhere
+            return doc(db, "games", gameCode);
         }
         
         // --- Authentication ---
@@ -233,14 +233,11 @@
             });
 
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Simplified for hosting anywhere
+                await signInAnonymously(auth);
             } catch (error) {
                 console.error("Authentication failed:", error);
-                loadingOverlay.innerHTML = `<p class="text-red-500 font-bold p-4">Authentication Failed. Please check your setup or refresh the page.</p>`;
+                loadingOverlay.innerHTML = `<p class="text-red-500 font-bold p-4">Authentication Failed. Please check your Firebase setup.</p>`;
             }
         }
         
@@ -296,8 +293,7 @@
                         throw new Error("Game has already started.");
                     }
                     if (gameData.players.some(p => p.uid === userId)) {
-                        // Player is already in, just join
-                        return;
+                        return; // Player is already in, just join
                     }
                     
                     const newPlayer = {
@@ -366,7 +362,7 @@
                         if (currentPlayer.position === 0 && roll === 6) {
                            newPosition = 1;
                            log = `Player ${currentPlayer.id} is on the board!`;
-                        } else {
+                        } else if (currentPlayer.position > 0) {
                             newPosition += roll;
                         }
                         
@@ -384,8 +380,11 @@
                         data.status = 'finished';
                     }
 
-                    // Switch turn
-                    const nextPlayerIndex = (data.currentPlayerIndex + 1) % data.players.length;
+                    const nextPlayerIndex = (roll === 6 && newPosition > 0) ? data.currentPlayerIndex : (data.currentPlayerIndex + 1) % data.players.length;
+                    if (roll === 6 && newPosition > 0) {
+                        log += " Roll again!";
+                    }
+
 
                     transaction.update(gameRef, {
                         lastDiceRoll: roll,
@@ -398,7 +397,7 @@
                 });
             } catch(e) {
                 console.error("Roll dice transaction failed:", e);
-                rollDiceBtn.disabled = false; // re-enable on error
+                rollDiceBtn.disabled = false;
             }
         }
 
@@ -442,11 +441,10 @@
                 playerLobbyList.appendChild(playerDiv);
             });
             
-            startGameBtn.disabled = !(data.hostId === userId && data.players.length >= 1); // Allow starting with 1 player for testing
+            startGameBtn.disabled = !(data.hostId === userId && data.players.length >= 1);
         }
 
         function renderGame(data) {
-            // Update player pieces
             playerPiecesContainer.innerHTML = '';
             data.players.forEach(p => {
                 const playerElement = document.createElement('div');
@@ -457,21 +455,13 @@
                 updatePlayerPosition(p, playerElement);
             });
             
-            // Update turn indicator
             const currentPlayer = data.players[data.currentPlayerIndex];
             turnIndicator.textContent = `Player ${currentPlayer.id}'s Turn`;
             turnIndicator.className = `text-2xl font-bold mb-4 p-3 rounded-lg w-full text-center transition-colors duration-300 ${currentPlayer.config.indicator}`;
-
-            // Update Log
             messageLog.textContent = data.logMessage;
-            
-            // Animate Dice
             animateDice(data.lastDiceRoll);
-
-            // Enable/disable roll button
             rollDiceBtn.disabled = (currentPlayer.uid !== userId || data.status !== 'active');
 
-            // Check for winner
             if (data.status === 'finished') {
                 winnerMessage.textContent = `Player ${data.winnerId} Wins!`;
                 winnerModal.style.display = 'flex';
@@ -500,8 +490,8 @@
         
         function animateDice(roll) {
             const rotations = { 1: 'rotateY(0deg)', 2: 'rotateY(-90deg)', 3: 'rotateY(-180deg)', 4: 'rotateY(90deg)', 5: 'rotateX(-90deg)', 6: 'rotateX(90deg)' };
-            const randomX = (Math.floor(Math.random() * 2) + 1) * 360;
-            const randomY = (Math.floor(Math.random() * 2) + 1) * 360;
+            const randomX = (Math.floor(Math.random() * 4) + 2) * 360;
+            const randomY = (Math.floor(Math.random() * 4) + 2) * 360;
             diceElement.style.transform = `rotateX(${randomX}deg) rotateY(${randomY}deg) ${rotations[roll]}`;
         }
         
@@ -510,7 +500,8 @@
         async function generateUniqueGameCode() {
             let code;
             let exists = true;
-            const gamesCollectionRef = collection(db, "artifacts", appId, "public", "data", "games");
+            // Use a simple path that works anywhere
+            const gamesCollectionRef = collection(db, "games");
             while(exists) {
                 code = Math.random().toString(36).substring(2, 8).toUpperCase();
                 const gameDocRef = doc(gamesCollectionRef, code);
@@ -549,16 +540,27 @@
         startGameBtn.addEventListener('click', startGame);
         rollDiceBtn.addEventListener('click', handleRollDice);
         resetBtn.addEventListener('click', leaveGame);
-        playAgainBtn.addEventListener('click', () => {
-             // For now, just leaves game. A "play again" feature would need more logic.
-             leaveGame();
-        });
+        playAgainBtn.addEventListener('click', leaveGame);
+        
         gameCodeDisplay.addEventListener('click', () => {
             if(currentGameCode) {
-                navigator.clipboard.writeText(currentGameCode).then(() => {
+                const textArea = document.createElement("textarea");
+                textArea.value = currentGameCode;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
                     copyFeedback.textContent = 'Copied!';
                     setTimeout(() => copyFeedback.textContent = '', 2000);
-                });
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    copyFeedback.textContent = 'Failed to copy!';
+                    setTimeout(() => copyFeedback.textContent = '', 2000);
+                }
+                document.body.removeChild(textArea);
             }
         });
         
@@ -569,4 +571,3 @@
     </script>
 </body>
 </html>
-
